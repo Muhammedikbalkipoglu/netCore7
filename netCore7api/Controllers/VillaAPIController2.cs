@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using netCore7api.Data;
 using netCore7api.Logging;
 using netCore7api.Models;
@@ -9,39 +8,63 @@ using netCore7api.Models.Dto;
 namespace netCore7api.Controllers
 {
     //[Route("api/[controller]")]
-    [Route("api/VillaAPI")]
+    [Route("api/VillaAPI2")]
     [ApiController]
-    public class VillaAPIController : ControllerBase
+    public class VillaAPIController2 : ControllerBase
     {
-        private readonly ApplicationDbContext _db;
-        public VillaAPIController(ApplicationDbContext db)
-        {
-            _db = db;
-        }
+        //private readonly ILogger<VillaAPIController> _logger;
+        private readonly ILogging _logger;
 
+        public VillaAPIController2(ILogging logger)
+        {
+            _logger = logger;
+        }
+        //public VillaAPIController(/*ILogger<VillaAPIController> logger*/)
+        //{
+        //    //_logger = logger;
+        //}
+        //[HttpGet]
+        //public IEnumerable<VillaDto> GetVillas()
+        //{
+        //    return VillaStore.villaList;
+
+
+        //}
+
+        //[HttpGet("{id:int}")]
+        //public VillaDto GetVillas(int id)
+        //{
+        //    return VillaStore.villaList.FirstOrDefault(u => u.Id == id);
+
+
+        //}
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public ActionResult<IEnumerable<VillaDto>> GetVillas()
         {
-
-            return Ok(_db.Villas.ToList());
+            //_logger.LogInformation("Getting All Villas");
+            _logger.Log("Getting All Villas","");
+            return Ok(VillaStore.villaList);
         }
 
-        [HttpGet("{id:int}", Name = "GetVilla")]
+        [HttpGet("{id:int}", Name = "GetVilla2")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-
+        //[ProducesResponseType(200, Type = typeof(VillaDto))]
+        //[ProducesResponseType(404)]
+        //[ProducesResponseType(400)]
         public ActionResult<VillaDto> GetVilla(int id)
         {
             if (id == 0)
             {
                 //_logger.LogError("Get Villa Error with Id" + id);
+                _logger.Log("Get Villa Error with Id" + id, "error");
                 return BadRequest();
             }
 
-            var villa = _db.Villas.FirstOrDefault(u => u.Id == id);
+            var villa = VillaStore.villaList.FirstOrDefault(u => u.Id == id);
             if (villa == null)
             {
                 return NotFound();
@@ -51,12 +74,17 @@ namespace netCore7api.Controllers
         }
 
         [HttpPost]
+        //[ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult CreateVilla([FromBody] VillaDto villaDto)
         {
-            if (_db.Villas.FirstOrDefault(u => u.Name.ToLower() == villaDto.Name.ToLower()) != null)
+            //if (!ModelState.IsValid) 
+            //{
+            //    return BadRequest(ModelState);
+            //}
+            if (VillaStore.villaList.FirstOrDefault(u => u.Name.ToLower() == villaDto.Name.ToLower()) != null)
             {
                 ModelState.AddModelError("CustomError", "Villa already exist!");
                 return BadRequest(ModelState);
@@ -71,19 +99,8 @@ namespace netCore7api.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            Villa model = new()
-            {
-                Amentiy = villaDto.Amentiy,
-                Details = villaDto.Details,
-                Id = villaDto.Id,
-                ImageUrl = villaDto.ImageUrl,
-                Name = villaDto.Name,
-                Occupancy = villaDto.Occupancy,
-                Rate = villaDto.Rate,
-                Sqft = villaDto.Sqft
-            };
-            _db.Villas.Add(model);
-            _db.SaveChanges();
+            villaDto.Id = VillaStore.villaList.OrderByDescending(u => u.Id).FirstOrDefault().Id + 1;
+            VillaStore.villaList.Add(villaDto);
 
             return CreatedAtRoute("GetVilla", new { id = villaDto.Id }, villaDto);
         }
@@ -91,27 +108,26 @@ namespace netCore7api.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [HttpDelete("{id:int}", Name = "DeleteVilla")]
+        [HttpDelete("{id:int}", Name = "DeleteVilla2")]
         public IActionResult DeleteVilla(int id)
         {
             if (id == 0)
             {
                 return BadRequest();
             }
-            var villa = _db.Villas.FirstOrDefault(v => v.Id == id);
+            var villa = VillaStore.villaList.FirstOrDefault(v => v.Id == id);
 
             if (villa == null)
             {
                 return NotFound();
             }
 
-            _db.Villas.Remove(villa);
-            _db.SaveChanges();
+            VillaStore.villaList.Remove(villa);
 
             return NoContent();
         }
 
-        [HttpPut("{id:int}", Name = "UpdateVilla")]
+        [HttpPut("{id:int}", Name = "UpdateVilla2")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public IActionResult UpdateVilla(int id, [FromBody] VillaDto villaDto)
@@ -120,23 +136,15 @@ namespace netCore7api.Controllers
             {
                 return BadRequest();
             }
+            var villa = VillaStore.villaList.FirstOrDefault(u => u.Id == id);
+            villa.Name = villaDto.Name;
+            villa.Sqft = villaDto.Sqft;
+            villa.Occupancy = villaDto.Occupancy;
 
-            Villa model = new()
-            {
-                Amentiy = villaDto.Amentiy,
-                Details = villaDto.Details,
-                Id = villaDto.Id,
-                ImageUrl = villaDto.ImageUrl,
-                Name = villaDto.Name,
-                Occupancy = villaDto.Occupancy,
-                Rate = villaDto.Rate,
-                Sqft = villaDto.Sqft
-            };
-            _db.Villas.Update(model);
             return NoContent();
         }
 
-        [HttpPatch("{id:int}", Name = "UpdatePartialVilla")]
+        [HttpPatch("{id:int}", Name = "UpdatePartialVilla2")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public IActionResult UpdatePartialVilla(int id, JsonPatchDocument<VillaDto> patchDTO)
@@ -145,40 +153,13 @@ namespace netCore7api.Controllers
             {
                 return BadRequest();
             }
-
-            var villa = _db.Villas.AsNoTracking().FirstOrDefault(u => u.Id == id);
-            VillaDto villaDto = new()
-            {
-                Amentiy = villa.Amentiy,
-                Details = villa.Details,
-                Id = villa.Id,
-                ImageUrl = villa.ImageUrl,
-                Name = villa.Name,
-                Occupancy = villa.Occupancy,
-                Rate = villa.Rate,
-                Sqft = villa.Sqft
-            };
+            var villa = VillaStore.villaList.FirstOrDefault(u => u.Id == id);
+                     
             if (villa == null)
             {
                 return BadRequest();
             }
-            patchDTO.ApplyTo(villaDto, ModelState);
-
-            Villa model = new()
-            {
-                Amentiy = villaDto.Amentiy,
-                Details = villaDto.Details,
-                Id = villaDto.Id,
-                ImageUrl = villaDto.ImageUrl,
-                Name = villaDto.Name,
-                Occupancy = villaDto.Occupancy,
-                Rate = villaDto.Rate,
-                Sqft = villaDto.Sqft
-            };
-
-            _db.Villas.Update(model);
-            _db.SaveChanges();
-
+            patchDTO.ApplyTo(villa, ModelState);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -187,4 +168,3 @@ namespace netCore7api.Controllers
         }
     }
 }
-
