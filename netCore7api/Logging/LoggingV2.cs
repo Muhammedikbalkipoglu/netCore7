@@ -3,7 +3,7 @@
     public class LoggingV2 : ILogging
     {
         public void Log(string message, string type)
-        {
+        { //test
             if (type == "error")
             {
                 Console.BackgroundColor = ConsoleColor.Red;
